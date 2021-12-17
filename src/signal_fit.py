@@ -81,7 +81,7 @@ def main(paths, window, length_threshold):
     for path in tqdm(paths):
         emotions, tag = load_transform_sentiment(path)
 
-        if len(emotions) >= 20:
+        if len(emotions) >= length_threshold:
             model = calc_novelty(emotions, window=window)
 
             novelty = curb_incomplete_signal(model.nsignal, window=window)
