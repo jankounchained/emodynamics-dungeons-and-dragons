@@ -12,24 +12,26 @@ from sklearn.preprocessing import StandardScaler
 
 from entropies import InfoDynamics
 from entropies import jsd
+from util import load_transform_sentiment
 
 
-def load_transform_sentiment(path):
+def calc_ntr(emotion_matrix, window, visualize=False):
+    '''Calculate Novelty, Transience & Resonance in a given window 
 
-    with open(path) as fin:
-        episode_sentiment_dist = ndjson.load(fin)
-        episode_tag = os.path.basename(path).replace('.ndjson', '')
+    Parameters
+    ----------
+    emotion_matrix : np.array
+        array of shape (n_documents, n_labels)
+    window : int
+        n documents to look before/after document[i]
+    visualize : bool, optional
+        enable diagnostics plot for novelty? By default False
 
-    # flatten to List[List[float]] format
-    emotion_matrix = []
-    for doc in episode_sentiment_dist:
-        flattened_doc = [emotion['score'] for emotion in doc[0]]
-        emotion_matrix.append(flattened_doc)
-
-    return emotion_matrix, episode_tag
-
-
-def calc_novelty(emotion_matrix, window, visualize=False):
+    Returns
+    -------
+    entropies.InfoDynamics
+        trained instance of infodynamics class
+    '''
 
     idmdl = InfoDynamics(
         data=emotion_matrix,
@@ -49,10 +51,26 @@ def calc_novelty(emotion_matrix, window, visualize=False):
 
 
 def curb_incomplete_signal(timeseries, window):
+    '''remove first & last {window} documents'''
     return timeseries[window:-window]
 
 
 def calculate_resonance_novelty_slope(resonance, novelty):
+    '''get slope of resonance ~ novelty linear model
+    a) standardize
+    b) fit a simple linear regression
+    c) extract beta coefficient
+
+    Parameters
+    ----------
+    resonance : np.array-like
+    novelty : np.array-like
+
+    Returns
+    -------
+    float
+        slope of lm(resonance ~ novelty)
+    '''
 
     # reshape
     novelty = novelty.reshape(-1, 1)
@@ -76,13 +94,30 @@ def calculate_resonance_novelty_slope(resonance, novelty):
 
 
 def main(paths, window, length_threshold):
+    '''Get scores for files, generate results file
+
+    Parameters
+    ----------
+    paths : list
+        paths to emotion classification matrices
+    window : int
+        n documents to look before/after document[i]
+    length_threshold : int
+        minimum number of datapoints the timeseries should have
+        to be processed
+
+    Returns
+    -------
+    List[dict]
+        where rows are documents, key-value pairs are variable-values.
+    '''
 
     results = []
     for path in tqdm(paths):
         emotions, tag = load_transform_sentiment(path)
 
         if len(emotions) >= length_threshold:
-            model = calc_novelty(emotions, window=window)
+            model = calc_ntr(emotions, window=window)
 
             novelty = curb_incomplete_signal(model.nsignal, window=window)
             resonance = curb_incomplete_signal(model.rsignal, window=window)
@@ -102,7 +137,7 @@ def main(paths, window, length_threshold):
 
             results.append(report_episode)
 
-        # catch error with episodes 2444.ndjson, 396.ndjosn, 516.ndjson
+        # catch error with episodes {2444, 396, 516}.ndjson
         else:
             msg.fail(f'episode too short: {path}')
 
