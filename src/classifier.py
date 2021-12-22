@@ -6,6 +6,7 @@ import os
 import ndjson
 from tqdm import tqdm
 from wasabi import msg
+from codecarbon import OfflineEmissionsTracker
 
 from transformers import pipeline
 
@@ -71,11 +72,18 @@ if __name__ == "__main__":
 
     classifier = setup_pipeline()
 
+    tracker = OfflineEmissionsTracker(
+        country_iso_code="DNK",
+        project_name='classifier'
+        )
+
+    tracker.start()
     main(
         classifier=classifier,
         paths=found_paths,
         outdir=args['outdir']
     )
+    emissions = tracker.stop()
 
     msg.info(f'Files generated in {args["outdir"]}')
     msg.good('Job completed!')

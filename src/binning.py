@@ -8,6 +8,7 @@ import pandas as pd
 import ndjson
 from tqdm import tqdm
 from wasabi import msg
+from codecarbon import OfflineEmissionsTracker
 
 
 def timebin(texts, timestamps, bin_freq='10s'):
@@ -154,11 +155,18 @@ if __name__ == '__main__':
     found_paths = [os.path.join(args['datadir'], path) for path in found_paths]
     msg.info(f'Data loader: found {len(found_paths)} input files')
 
+    tracker = OfflineEmissionsTracker(
+        country_iso_code="DNK",
+        project_name='binning'
+        )
+
+    tracker.start()
     main(
         paths=found_paths,
         bin_freq=args['binfreq'],
         outdir=args['outdir']
     )
+    emissions = tracker.stop()
 
     msg.info(f'Files generated in {args["outdir"]}')
     msg.good('Job completed!')

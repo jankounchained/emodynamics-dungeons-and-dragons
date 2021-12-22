@@ -5,6 +5,7 @@ import numpy as np
 from wasabi import msg
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+from codecarbon import OfflineEmissionsTracker
 
 from nolds import dfa
 from sklearn.linear_model import LinearRegression
@@ -165,11 +166,19 @@ if __name__ == "__main__":
     if len(signal_paths) < 1:
         raise FileNotFoundError(f"{args['signaldir']} seems to be empty!")
 
+
+    tracker = OfflineEmissionsTracker(
+        country_iso_code="DNK",
+        project_name='entropy_signal'
+        )
+
+    tracker.start()
     results = main(
         paths=signal_paths,
         window=args['window'],
         length_threshold=args['lengththreshold']
     )
+    emissions = tracker.stop()
 
     with open(args['outpath'], 'w') as fout:
         ndjson.dump(results, fout)
