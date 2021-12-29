@@ -125,11 +125,11 @@ def main(paths, window, length_threshold):
 
             slope = calculate_resonance_novelty_slope(resonance, novelty)
 
-            H = dfa(novelty, overlap=True)
+            # H = dfa(novelty, overlap=True)
 
             report_episode = {
                 'episode': int(tag),
-                'hurst': H,
+                # 'hurst': H,
                 'rn_slope': slope,
                 'N_mean': np.mean(novelty),
                 'N_std': np.std(novelty),
@@ -166,6 +166,8 @@ if __name__ == "__main__":
     if len(signal_paths) < 1:
         raise FileNotFoundError(f"{args['signaldir']} seems to be empty!")
 
+
+    msg.info(f'Staring signal fit. {len(signal_paths)} found')
 
     tracker = OfflineEmissionsTracker(
         country_iso_code="DNK",

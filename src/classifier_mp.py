@@ -57,7 +57,7 @@ def main(classifier, paths, outdir):
             msg.fail(f'Episode failed: {path}')
 
 
-def parallel_main(paths, outdir):
+def parallel_main(paths, outdir='data/test_run/representations'):
     '''
     process all subtitles & dump results into outdir
     modification of main method for parallel processing
@@ -106,36 +106,24 @@ if __name__ == "__main__":
     found_paths = [os.path.join(args['datadir'], path) for path in found_paths]
     msg.info(f'Sentiment: found {len(found_paths)} input files')
 
-    # init emission tracker
-    tracker = OfflineEmissionsTracker(
-        country_iso_code="DNK",
-        project_name='classifier'
-    )
+    # # init emission tracker
+    # tracker = OfflineEmissionsTracker(
+    #     country_iso_code="DNK",
+    #     project_name='classifier'
+    # )
 
-    tracker.start()
+    # tracker.start()
 
     n_jobs = int(args['njobs'])
     msg.info(f'starting {n_jobs} jobs')
-    if n_jobs > 1:
-        # run in parallel
-        def parallel_main_fixed_args(paths):
-            parallel_main(outdir=args['outdir'], paths=paths)
+    # run in parallel
+    # def parallel_main_fixed_args(paths):
+    #     parallel_main(outdir=args['outdir'], paths=paths)
 
-        with WorkerPool(n_jobs=n_jobs, start_method='spawn') as pool:
-            # pool.set_shared_objects(classifier)
-            pool.map(parallel_main_fixed_args,
-                     found_paths, progress_bar=True)
+    with WorkerPool(n_jobs=n_jobs, start_method='spawn') as pool:
+        pool.map(parallel_main, found_paths, progress_bar=True)
 
-    else:
-        # run in sequence
-        classifier = setup_pipeline()
-        main(
-            classifier=classifier,
-            paths=found_paths,
-            outdir=args['outdir']
-        )
-
-    emissions = tracker.stop()
+    # emissions = tracker.stop()
 
     msg.info(f'Files generated in {args["outdir"]}')
     msg.good('Job completed!')
