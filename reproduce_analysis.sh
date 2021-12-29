@@ -18,7 +18,8 @@ python src/binning.py \
 
 python src/classifier.py \
     -d "${wdir}/bins" \
-    -o "${wdir}/representations"
+    -o "${wdir}/representations" \
+    -j 1
 
 python src/signal_fit.py \
     -d "${wdir}/representations" \
