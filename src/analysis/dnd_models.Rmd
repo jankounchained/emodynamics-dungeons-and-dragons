@@ -1,0 +1,97 @@
+ ---
+title: "dnd_models"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(lmerTest)
+library(Rcpp)
+library(MuMIn)
+library(stargazer)
+```
+## Data
+
+```{r}
+df = read_csv('b20_w6_metadata_results.csv') %>%
+  mutate(stream_group = `Stream group name`) %>%
+  mutate(
+    z_novelty = scale(novelty),
+    z_resonance = scale(resonance)
+  )
+```
+
+## Models
+
+```{r}
+m0_global_resonance_novelty_simple = lm(z_resonance~z_novelty, data=df)
+```
+
+```{r}
+m1_global_resonance_novelty = lmerTest::lmer(resonance~novelty+(1|episode)+(1|stream_group), data=df)
+
+MuMIn::r.squaredGLMM(m1_global_resonance_novelty)
+#m2_resonance_streamer = lmerTest::lmer(resonance~stream_group+(1|episode), data=df)
+
+```
+
+```{r}
+m2_random_slope_rn = lme4::lmer(resonance~novelty+(novelty|episode)+(novelty|stream_group), data=df)
+MuMIn::r.squaredGLMM(m2_random_slope_rn)
+
+```
+
+
+```{r}
+BIC(m0_global_resonance_novelty_simple)
+
+BIC(m1_global_resonance_novelty)
+```
+
+
+# EMOTION
+```{r}
+df_emo = read_csv("b20_w6_emotion_props.csv") %>%
+  mutate(
+    z_rn_slope = scale(rn_slope),
+    z_joy = scale(joy),
+    z_anger = scale(anger),
+    z_sadness = scale(sadness),
+    z_fear = scale(fear),
+    z_surprise = scale(surprise),
+    z_love = scale(love)
+  )
+```
+
+```{r}
+me0 = lm(rn_slope~joy+anger+sadness+fear+surprise+love, data = df_emo)
+me0z = lm(z_rn_slope ~ z_joy + z_anger + z_sadness + z_fear + z_surprise + z_love, data = df_emo)
+```
+
+```{r}
+me1 = lm(rn_slope~anger+sadness+fear+love+surprise+love, data = df_emo)
+me1z = lm(z_rn_slope ~ z_joy + z_sadness + z_fear + z_surprise + z_love, df_emo)
+```
+
+```{r}
+me2z = lm(z_rn_slope ~ z_sadness + z_fear + z_surprise + z_love, df_emo)
+```
+
+```{r}
+me2_joy = lm(z_rn_slope~z_joy, data=df_emo)
+me2_anger = lm(z_rn_slope~z_anger, data=df_emo)
+```
+
+```{r}
+BIC(me0z)
+BIC(me1)
+BIC(me2_joy)
+BIC(me2_anger)
+```
+
+```{r}
+
+```
+
