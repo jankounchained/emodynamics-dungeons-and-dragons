@@ -10,6 +10,8 @@ from codecarbon import OfflineEmissionsTracker
 from nolds import dfa
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import r2_score
+
 
 from entropies import InfoDynamics
 from entropies import jsd
@@ -91,10 +93,16 @@ def calculate_resonance_novelty_slope(resonance, novelty):
     lm.fit(X=z_novelty, y=z_resonance)
 
     # capture slope
-    return lm.coef_[0][0]
+    slope = lm.coef_[0][0]
+    # r2
+    resonance_pred = lm.predict(z_novelty)
+    r2 = r2_score(z_resonance, resonance_pred)
+    # p-value
+    
+    return slope, r2
 
 
-def main(paths, window, length_threshold):
+def main(paths, window, length_threshold, full_series=False):
     '''Get scores for files, generate results file
 
     Parameters
@@ -121,20 +129,28 @@ def main(paths, window, length_threshold):
             model = calc_ntr(emotions, window=window)
 
             novelty = curb_incomplete_signal(model.nsignal, window=window)
+            transience = curb_incomplete_signal(model.tsignal, window=window)
             resonance = curb_incomplete_signal(model.rsignal, window=window)
 
             slope = calculate_resonance_novelty_slope(resonance, novelty)
 
-            # H = dfa(novelty, overlap=True)
+            if full_series:
+                report_episode = {
+                    'episode': int(tag),
+                    'rn_slope': slope,
+                    'novelty': novelty.tolist(),
+                    'transience': transience.tolist(),
+                    'resonance': resonance.tolist()
+                }
 
-            report_episode = {
-                'episode': int(tag),
-                # 'hurst': H,
-                'rn_slope': slope,
-                'N_mean': np.mean(novelty),
-                'N_std': np.std(novelty),
-                'n_datapoints': len(model.nsignal)
-            }
+            else:
+                report_episode = {
+                    'episode': int(tag),
+                    'rn_slope': slope,
+                    'N_mean': np.mean(novelty),
+                    'N_std': np.std(novelty),
+                    'n_datapoints': len(model.nsignal)
+                }
 
             results.append(report_episode)
 
@@ -151,8 +167,9 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument('-d', '--signaldir', type=str)
     ap.add_argument('-w', '--window', type=int)
-    ap.add_argument('-t', '--lengththreshold', type=int)
     ap.add_argument('-o', '--outpath', type=str)
+    ap.add_argument('-t', '--lengththreshold', type=int, default=0, required=False)
+    ap.add_argument('-f', '--fullseries', type=bool, default=False, required=False)
     args = vars(ap.parse_args())
 
     if not os.path.exists(args['signaldir']):
@@ -178,9 +195,12 @@ if __name__ == "__main__":
     results = main(
         paths=signal_paths,
         window=args['window'],
-        length_threshold=args['lengththreshold']
+        length_threshold=args['lengththreshold'],
+        full_series=args['fullseries']
     )
     emissions = tracker.stop()
 
     with open(args['outpath'], 'w') as fout:
         ndjson.dump(results, fout)
+    
+    msg.good('Job done')

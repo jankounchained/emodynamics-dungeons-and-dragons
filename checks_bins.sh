@@ -1,7 +1,7 @@
 # window sizes to run
 bins="5 10 15 20 25 30 40"
 
-# run loop on bins of 20s and cutoff of 160 datapoints
+# run loop on bins of 20s
 for bin in $bins
 do
 outdir="data/b${bin}_w6"
@@ -18,9 +18,8 @@ python src/classifier.py \
     -o "${outdir}/representations" \
     -j 1
 
-python src/signal_fit.py \
+python src/ntr.py \
     -d "${outdir}/representations" \
     -w 6 \
-    -t 160 \
     -o "${outdir}/results.ndjson"
 done

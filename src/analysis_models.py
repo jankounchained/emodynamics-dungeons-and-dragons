@@ -16,6 +16,33 @@ from sklearn.linear_model import LinearRegression
 
 from util import load_transform_sentiment, calc_ratio_of_emotions
 
+
+# %%
+# plt settings
+# matplotlib settings
+scale = 1.8
+
+rc = {"text.usetex": False,
+    "font.family": "Times New Roman",
+    "font.serif": "serif",
+    "mathtext.fontset": "cm",
+    "axes.unicode_minus": False,
+    "axes.labelsize": 9*scale,
+    "xtick.labelsize": 9*scale,
+    "ytick.labelsize": 9*scale,
+    "legend.fontsize": 9*scale,
+    'axes.titlesize': 14,
+    "axes.linewidth": 1
+    }
+
+plt.rcParams.update(rc)
+
+sns.set_theme(
+    style="ticks",
+    # font='Times New Roman'
+    rc=rc
+    )
+
 # %%
 # get emotion ratios per episode
 signal_dir = '/home/jan/D&D/data/211001_20s_sentiment/signal_sentiment'
@@ -35,19 +62,40 @@ meta = pd.read_csv('/home/jan/D&D/data/211013_MetaData_episode_yt.csv', sep=';')
 df_raw = pd.read_csv('/home/jan/D&D/data/211001_20s_sentiment/211013_signal_metadata.csv')
 df = pd.merge(df_raw, results, on='episode', how='left')
 
-df_long = df.query('n_datapoints > 160')
 df_long = df_long.dropna(subset=['joy', 'sadness', 'fear', 'love', 'surprise'])
 
 
 # %%
-plt.plot()
-plot = sns.scatterplot(
-    x=df_long['joy'],
-    y=df_long['anger']
-)
+# correlations between emotion
+df_emo = df_long[['joy', 'sadness', 'fear', 'love', 'surprise', 'anger']]
+cor_emo = df_emo.corr()
 
-fig = plot.get_figure()
-fig.savefig('metadata_interactions/misc/joy_anger.png')
+mask = np.triu(np.ones_like(cor_emo, dtype=bool))
+f, ax = plt.subplots(figsize=(10, 8))
+
+cmap = sns.diverging_palette(230, 20, as_cmap=True)
+
+# Draw the heatmap with the mask and correct aspect ratio
+fig = sns.heatmap(cor_emo, mask=mask, cmap=cmap, vmax=.3, center=0,
+            square=True, linewidths=.5, cbar_kws={"shrink": .5})
+
+fig = fig.get_figure()
+fig.savefig('../correlations.png')
+
+# %%
+fig = sns.pairplot(df_emo)
+# fig = fig.get_figure()
+fig.savefig('../emotion_proportions.png')
+
+# %%
+# plt.plot()
+# plot = sns.scatterplot(
+#     x=df_long['joy'],
+#     y=df_long['anger']
+# )
+
+# fig = plot.get_figure()
+# fig.savefig('metadata_interactions/misc/joy_anger.png')
 
 # %%
 # RN vs. anger
@@ -120,7 +168,7 @@ df_long_nonan.info()
 ### comparte to meta
 ###
 meta = pd.read_csv('/home/jan/D&D/data/211013_MetaData_episode_yt.csv', sep=';').rename(columns={'INDEX-NUMBER': 'episode'}).drop(columns=['n_views', 'n_likes', 'n_comments', 'n_dislikes'])
-df_long_meta = pd.merge(df_long_nonan, meta, how='left', on ='episode')
+df_long_meta = pd.merge(df_long_nonan, meta, how='left', on='episode')
 
 # %%
 cols = df_long_meta.columns.tolist()
@@ -134,3 +182,45 @@ for var in cols[32:92]:
     fig = plot.get_figure()
     fig.savefig(f'metadata_interactions/anger/anger_{var}.png')
     plt.close()
+
+# %%
+##
+## R~N slopes distribution
+sns.distplot(df_long['rn_slope'])
+
+# %%
+##
+## decision tree
+from sklearn.tree import export_graphviz  
+from sklearn.tree import DecisionTreeRegressor 
+
+X = df_emo
+y = df_long['rn_slope']
+
+regressor = DecisionTreeRegressor(random_state=0, max_depth=6)  
+regressor.fit(X, y)
+
+export_graphviz(regressor, out_file ='../tree.dot', 
+               feature_names=['joy', 'sadness', 'fear', 'love', 'surprise', 'anger'])  
+# %%
+##
+## distribution of emotions
+df_emo_melt = df_emo.melt(var_name="emotion", value_name="proportion")
+sns.violinplot(
+    x=df_emo_melt['emotion'],
+    y=df_emo_melt['proportion']
+)
+
+
+# %%
+### episode length to 
+fig = sns.scatterplot(
+    x=df['n_datapoints'],
+    y=df['rn_slope']
+)
+
+fig = fig.get_figure()
+fig.savefig('../episode_length.png')
+
+
+# %%

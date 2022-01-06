@@ -21,8 +21,7 @@ python src/classifier.py \
     -o "${wdir}/representations" \
     -j 1
 
-python src/signal_fit.py \
+python src/ntr.py \
     -d "${wdir}/representations" \
     -w 6 \
-    -t 160 \
     -o "${wdir}/results.ndjson"
